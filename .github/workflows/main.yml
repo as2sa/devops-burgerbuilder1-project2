@@ -24,14 +24,19 @@ jobs:
       - name: 1. Checkout repository code
         uses: actions/checkout@v4
 
-      - name: 2. Azure Login using Service Principal (Classic)
+      - name: 2. Azure Login using Service Principal (Guaranteed Access)
+        env: # 👈 🔑 الحل الجذري: تعريف الأسرار كمتغيرات بيئية داخل الخطوة
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          # 🔑 هنا مفتاح الحل! نستخدم السر الآن
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }} 
+          # تمرير المتغيرات من البيئة (env)
+          client-id: ${{ env.AZURE_CLIENT_ID }} 
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ env.AZURE_CLIENT_SECRET }} 
           enable-AzPSSession: true
 
       - name: 3. Build and Push Docker Image to ACR
