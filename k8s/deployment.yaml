@@ -1,0 +1,25 @@
+# ملف النشر 
+# k8s/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${{ env.DEPLOYMENT_NAME }}
+  labels:
+    app: burgerbuilder
+spec:
+  replicas: 1 # عقدة واحدة فقط بسبب قيود vCPU
+  selector:
+    matchLabels:
+      app: burgerbuilder
+  template:
+    metadata:
+      labels:
+        app: burgerbuilder
+    spec:
+      containers:
+      - name: burgerbuilder-web-container
+        image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        ports:
+        - containerPort: 8080 # المنفذ الافتراضي لتطبيق .NET 
+      imagePullSecrets:
+      - name: acrbgbuildertf-secret # اسم سر سحب الصورة

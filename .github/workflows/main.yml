@@ -1,0 +1,69 @@
+# .github/workflows/main.yml
+
+name: CI/CD Pipeline - Deploy Burger Builder to AKS
+
+on:
+  push:
+    branches:
+      - main # يتم التشغيل عند أي دَفْع (Push) على فرع main
+
+env:
+  # تحديد أسماء الموارد التي أنشأتها Terraform
+  RESOURCE_GROUP: rg-burgerbuilder-tf-prod
+  ACR_NAME: acrbgbuildertf
+  AKS_NAME: aks-burgerbuilder-tf-prod
+  IMAGE_NAME: burgerbuilder-web
+  IMAGE_TAG: latest
+  DEPLOYMENT_NAME: burgerbuilder-web-deployment
+  
+permissions:
+  id-token: write # هذا ضروري لـ OIDC لطلب التوكن
+  contents: read
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 1. Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: 2. Azure Login using OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
+          # لا نحتاج client-secret هنا بفضل OIDC
+
+      - name: 3. Build and Push Docker Image to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.ACR_NAME }}.azurecr.io
+          username: ${{ secrets.AZURE_CLIENT_ID }}
+          password: ${{ secrets.AZURE_CLIENT_SECRET }} # يتم استخدام أي قيمة هنا أو يمكن استخدام OIDC للمصادقة
+
+      - run: |
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        working-directory: ./src # **تأكد من أن هذا المسار هو مسار Dockerfile في مستودعك**
+      
+      - name: 4. Set up Kubeconfig for AKS
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.AKS_NAME }}
+          
+      - name: 5. Deploy to AKS
+        uses: azure/k8s-deploy@v5
+        with:
+          manifests: |
+            k8s/deployment.yaml
+            k8s/service.yaml
+          images: |
+            ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          imagepullsecrets: |
+            ${{ env.ACR_NAME }}-secret
+
+# عند الانتهاء من اللصق، قومي بإضافة ملفات deployment.yaml و service.yaml في الخطوة التالية.

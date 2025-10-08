@@ -1,29 +1,16 @@
-# Environment files
-.env
-.env.local
-.env.*.local
+*.tfstate
+*.tfstate.*
+.terraform/
 
-# IDE
+*.tfvars
+*.hcl
+crash.log
+override.tf
+override.tf.json
+*-override.tf
+*-override.tf.json
+.terraformrc
+terraform.rc
+
 .vscode/
-.idea/
-*.iml
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Temporary files
-*.tmp
-*.temp
-
-**/**/.terraform/
-**/**/.terraform.lock.hcl
-**/**/*.tfstate
-**/**/target/
-
