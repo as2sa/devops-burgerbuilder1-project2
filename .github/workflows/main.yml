@@ -16,27 +16,22 @@ env:
   IMAGE_TAG: latest
   DEPLOYMENT_NAME: burgerbuilder-web-deployment
   
-permissions: # 👈 🔑 تمت إضافة إذن ID-TOKEN في الجذر
-  id-token: write
-  contents: read 
-
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    
-    # تمت إزالة قسم الأذونات من هنا لضمان استخدام الأذونات الجذرية التي تعمل بشكل موثوق
-    # مع مكون azure/login@v1
     
     steps:
       - name: 1. Checkout repository code
         uses: actions/checkout@v4
 
-      - name: 2. Azure Login using OIDC
+      - name: 2. Azure Login using Service Principal (Classic)
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          # 🔑 هنا مفتاح الحل! نستخدم السر الآن
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }} 
           enable-AzPSSession: true
 
       - name: 3. Build and Push Docker Image to ACR
@@ -49,7 +44,7 @@ jobs:
       - run: |
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
           docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-        working-directory: ./src # **تأكد من أن هذا المسار هو مسار Dockerfile**
+        working-directory: ./src
       
       - name: 4. Set up Kubeconfig for AKS
         uses: azure/aks-set-context@v3
