@@ -24,22 +24,16 @@ jobs:
       - name: 1. Checkout repository code
         uses: actions/checkout@v4
 
-      - name: 2. Azure Login using Service Principal (Guaranteed Access)
-        env: # 👈 🔑 الحل الجذري: تعريف الأسرار كمتغيرات بيئية داخل الخطوة
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      - name: 2. Azure Login using Service Principal (Merged Secret)
         uses: azure/login@v1
         with:
-          # تمرير المتغيرات من البيئة (env)
-          client-id: ${{ env.AZURE_CLIENT_ID }} 
-          tenant-id: ${{ env.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ env.AZURE_CLIENT_SECRET }} 
+          # 🔑 هنا نستخدم السر المُدمج (AZURE_CREDENTIALS) بدلاً من الأسرار الفردية
+          creds: ${{ secrets.AZURE_CREDENTIALS }} 
           enable-AzPSSession: true
 
       - name: 3. Build and Push Docker Image to ACR
+        # ملاحظة: حتى مع استخدام creds أعلاه، سنترك هذه الخطوة تستخدم الأسرار الفردية كطريقة مصادقة
+        # احتياطية لضمان عمل Docker Login مع ACR.
         uses: azure/docker-login@v1
         with:
           login-server: ${{ env.ACR_NAME }}.azurecr.io
@@ -49,7 +43,7 @@ jobs:
       - run: |
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
           docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-        working-directory: ./src
+        working-directory: ./src # يجب التأكد من وجود Dockerfile هنا
       
       - name: 4. Set up Kubeconfig for AKS
         uses: azure/aks-set-context@v3
